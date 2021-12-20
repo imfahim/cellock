@@ -29,4 +29,17 @@ describe('API tests', () => {
                 .expect(200, done);
         });
     });
+
+    describe('GET /rides', () => {
+        it('should return rides', (done) => {
+            request(app)
+                .get('/rides')
+                .expect(200)
+                .expect('Content-Type', /json/)
+                .expect({
+                    error_code: 'RIDES_NOT_FOUND_ERROR',
+                    message: 'Could not find any rides'
+                },done);
+        });
+    });
 });

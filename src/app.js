@@ -77,7 +77,17 @@ module.exports = (db) => {
     });
 
     app.get('/rides', (req, res) => {
-        db.all('SELECT * FROM Rides', function (err, rows) {
+        const page = typeof req.query.page == 'undefined'? 1 : parseInt(req.query.page);
+        const size = typeof req.query.size == 'undefined'? 5 : parseInt(req.query.size);
+        if(isNaN(page) || isNaN(size)){
+            return res.send({
+                error_code: 'PARAMETER_ERROR',
+                message: 'parameter error'
+            });
+        }
+        const offset = page == 1 ? 0 : (page-1)*size;
+        var values = [size,offset];
+        db.all('SELECT * FROM Rides ORDER BY rideID LIMIT ? OFFSET ?;', values, function (err, rows) {
             if (err) {
                 return res.send({
                     error_code: 'SERVER_ERROR',
