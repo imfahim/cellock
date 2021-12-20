@@ -107,7 +107,14 @@ module.exports = (db) => {
     });
 
     app.get('/rides/:id', (req, res) => {
-        db.all(`SELECT * FROM Rides WHERE rideID='${req.params.id}'`, function (err, rows) {
+        if(isNaN(req.params.id)){
+            return res.send({
+                error_code: 'PARAMETER_ERROR',
+                message: 'parameter error'
+            });
+        }
+        var values = [req.params.id];
+        db.all(`SELECT * FROM Rides WHERE rideID=?`,values, function (err, rows) {
             if (err) {
                 return res.send({
                     error_code: 'SERVER_ERROR',
