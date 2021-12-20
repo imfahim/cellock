@@ -7,76 +7,90 @@ const bodyParser = require('body-parser');
 const jsonParser = bodyParser.json();
 
 module.exports = (db) => {
-    app.get('/health', (req, res) => res.send('Healthy'));
 
-    app.post('/rides', jsonParser, (req, res) => {
-        const startLatitude = Number(req.body.start_lat);
-        const startLongitude = Number(req.body.start_long);
-        const endLatitude = Number(req.body.end_lat);
-        const endLongitude = Number(req.body.end_long);
-        const riderName = req.body.rider_name;
-        const driverName = req.body.driver_name;
-        const driverVehicle = req.body.driver_vehicle;
+    async function executeAll(query,values = null){
+        return new Promise(function(resolve,reject){
+            db.all(query,values, function(err,rows){
+            if(err){
+                console.log(err);
+                return reject(err);
+            }
+            resolve(rows);
+            });
+        });
+    }
 
-        if (startLatitude < -90 || startLatitude > 90 || startLongitude < -180 || startLongitude > 180) {
+    async function insertLastId(query,values = null){
+        return new Promise(function(resolve,reject){
+            db.run(query,values, function(err){
+            if(err){
+                console.log(err);
+                return reject(err);
+            }
+            resolve(this.lastID);
+            });
+        });
+    }
+
+    function requiredCheck(values,res){
+        for (var propName in values) {
+            if (typeof propName === 'undefined' || values[propName].length < 1) {
+                console.log("Iterating through prop with name", propName, " its value is ", values[propName])
+                return res.send({
+                    error_code: 'VALIDATION_ERROR',
+                    message:propName +' must be a non empty'
+                });
+            }
+        }    
+    }
+
+    function coordinatesCheck(start_lat,start_long,end_lat,end_long,res){
+        if(isNaN(start_lat) || isNaN(start_long) || isNaN(end_lat) || isNaN(end_long)){
+            return res.send({
+                error_code: 'PARAMETER_ERROR',
+                message: 'coordinates should be numbers'
+            });
+        }
+
+        if (Number(start_lat) < -90 || Number(start_lat) > 90 || Number(start_long) < -180 || Number(start_long) > 180) {
             return res.send({
                 error_code: 'VALIDATION_ERROR',
                 message: 'Start latitude and longitude must be between -90 - 90 and -180 to 180 degrees respectively'
             });
         }
 
-        if (endLatitude < -90 || endLatitude > 90 || endLongitude < -180 || endLongitude > 180) {
+        if (Number(end_lat) < -90 || Number(end_lat) > 90 || Number(end_long) < -180 || Number(end_long) > 180) {
             return res.send({
                 error_code: 'VALIDATION_ERROR',
                 message: 'End latitude and longitude must be between -90 - 90 and -180 to 180 degrees respectively'
             });
         }
+    }
 
-        if (typeof riderName !== 'string' || riderName.length < 1) {
-            return res.send({
-                error_code: 'VALIDATION_ERROR',
-                message: 'Rider name must be a non empty string'
+
+    app.get('/health', (req, res) => res.send('Healthy'));
+
+    app.post('/rides', jsonParser, async (req, res) => {
+        const obj = req.body;
+        coordinatesCheck(obj.start_lat,obj.start_long,obj.end_lat,obj.end_long,res);
+
+        requiredCheck(obj,res);
+
+        var values = Object.keys(obj)
+            .map(function(key) {
+                return obj[key];
             });
-        }
-
-        if (typeof driverName !== 'string' || driverName.length < 1) {
-            return res.send({
-                error_code: 'VALIDATION_ERROR',
-                message: 'Rider name must be a non empty string'
-            });
-        }
-
-        if (typeof driverVehicle !== 'string' || driverVehicle.length < 1) {
-            return res.send({
-                error_code: 'VALIDATION_ERROR',
-                message: 'Rider name must be a non empty string'
-            });
-        }
-
-        var values = [req.body.start_lat, req.body.start_long, req.body.end_lat, req.body.end_long, req.body.rider_name, req.body.driver_name, req.body.driver_vehicle];
         
-        const result = db.run('INSERT INTO Rides(startLat, startLong, endLat, endLong, riderName, driverName, driverVehicle) VALUES (?, ?, ?, ?, ?, ?, ?)', values, function (err) {
-            if (err) {
-                return res.send({
-                    error_code: 'SERVER_ERROR',
-                    message: 'Unknown error'
-                });
+        await insertLastId('INSERT INTO Rides(startLat, startLong, endLat, endLong, riderName, driverName, driverVehicle) VALUES (?, ?, ?, ?, ?, ?, ?)', values)
+        .then( async (lastID)=>{
+            if(!isNaN(lastID)){
+                const rows = await executeAll('SELECT * FROM Rides WHERE rideID = ?', lastID);
+                return res.send(rows);
             }
-
-            db.all('SELECT * FROM Rides WHERE rideID = ?', this.lastID, function (err, rows) {
-                if (err) {
-                    return res.send({
-                        error_code: 'SERVER_ERROR',
-                        message: 'Unknown error'
-                    });
-                }
-
-                res.send(rows);
-            });
         });
     });
 
-    app.get('/rides', (req, res) => {
+    app.get('/rides', async (req, res) => {
         const page = typeof req.query.page == 'undefined'? 1 : parseInt(req.query.page);
         const size = typeof req.query.size == 'undefined'? 5 : parseInt(req.query.size);
         if(isNaN(page) || isNaN(size)){
@@ -87,26 +101,19 @@ module.exports = (db) => {
         }
         const offset = page == 1 ? 0 : (page-1)*size;
         var values = [size,offset];
-        db.all('SELECT * FROM Rides ORDER BY rideID LIMIT ? OFFSET ?;', values, function (err, rows) {
-            if (err) {
-                return res.send({
-                    error_code: 'SERVER_ERROR',
-                    message: 'Unknown error'
-                });
-            }
-
-            if (rows.length === 0) {
-                return res.send({
-                    error_code: 'RIDES_NOT_FOUND_ERROR',
-                    message: 'Could not find any rides'
-                });
-            }
-
-            res.send(rows);
-        });
+        const rows = await executeAll('SELECT * FROM Rides ORDER BY rideID LIMIT ? OFFSET ?;', values);
+        if (rows.length === 0) {
+            return res.send({
+                error_code: 'RIDES_NOT_FOUND_ERROR',
+                message: 'Could not find any rides'
+            });
+        }
+        else{
+            return res.send(rows);
+        }
     });
 
-    app.get('/rides/:id', (req, res) => {
+    app.get('/rides/:id', async (req, res) => {
         if(isNaN(req.params.id)){
             return res.send({
                 error_code: 'PARAMETER_ERROR',
@@ -114,23 +121,16 @@ module.exports = (db) => {
             });
         }
         var values = [req.params.id];
-        db.all(`SELECT * FROM Rides WHERE rideID=?`,values, function (err, rows) {
-            if (err) {
-                return res.send({
-                    error_code: 'SERVER_ERROR',
-                    message: 'Unknown error'
-                });
-            }
-
-            if (rows.length === 0) {
-                return res.send({
-                    error_code: 'RIDES_NOT_FOUND_ERROR',
-                    message: 'Could not find any rides'
-                });
-            }
-
-            res.send(rows);
-        });
+        const rows = await executeAll(`SELECT * FROM Rides WHERE rideID=?`, values);
+        if (rows.length === 0) {
+            return res.send({
+                error_code: 'RIDES_NOT_FOUND_ERROR',
+                message: 'Could not find any rides'
+            });
+        }
+        else{
+            return res.send(rows);
+        }
     });
 
     return app;
