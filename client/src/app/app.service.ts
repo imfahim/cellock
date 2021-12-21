@@ -9,7 +9,9 @@ import { Rider } from './riders';
 })
 export class AppService {
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {
+
+   }
 
   private baseUrl = "http://localhost:8010/api"
 
@@ -18,7 +20,7 @@ export class AppService {
   }
 
   putRider(rider: Rider,id: number): Observable<any> {
-    return this.http.post<any>(this.baseUrl +'/rides/'+id, rider);
+    return this.http.post(this.baseUrl +'/updateRider/'+id, rider);
   }
 
   deleteRider(id: number): Observable<any> {

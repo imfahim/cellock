@@ -35,7 +35,6 @@ module.exports = (db) => {
     function requiredCheck(values,res){
         for (var propName in values) {
             if (typeof propName === 'undefined' || values[propName].length < 1) {
-                console.log("Iterating through prop with name", propName, " its value is ", values[propName])
                 return res.send({
                     error_code: 'VALIDATION_ERROR',
                     message:propName +' must be a non empty'
@@ -90,7 +89,7 @@ module.exports = (db) => {
         });
     });
 
-    app.post('/api/rides/:id',jsonParser, async (req, res) => {
+    app.post('/api/updateRider/:id',jsonParser, async (req, res) => {
         res.set('Access-Control-Allow-Origin', 'http://localhost:4200');
         if(isNaN(req.params.id)){
             return res.send({
@@ -117,6 +116,8 @@ module.exports = (db) => {
 
     app.delete('/api/rides/:id', async (req, res) => {
         res.set('Access-Control-Allow-Origin', 'http://localhost:4200');
+        requiredCheck(req.params.id);
+
         if(isNaN(req.params.id)){
             return res.send({
                 error_code: 'PARAMETER_ERROR',
