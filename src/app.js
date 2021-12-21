@@ -68,9 +68,9 @@ module.exports = (db) => {
     }
 
 
-    app.get('/health', (req, res) => res.send('Healthy'));
+    app.get('/api/health', (req, res) => res.send('Healthy'));
 
-    app.post('/rides', jsonParser, async (req, res) => {
+    app.post('/api/rides', jsonParser, async (req, res) => {
         const obj = req.body;
         coordinatesCheck(obj.start_lat,obj.start_long,obj.end_lat,obj.end_long,res);
 
@@ -90,7 +90,46 @@ module.exports = (db) => {
         });
     });
 
-    app.get('/rides', async (req, res) => {
+    app.put('/api/rides/:id',jsonParser, async (req, res) => {
+        if(isNaN(req.params.id)){
+            return res.send({
+                error_code: 'PARAMETER_ERROR',
+                message: 'parameter error'
+            });
+        }        
+        const obj = req.body;
+        coordinatesCheck(obj.start_lat,obj.start_long,obj.end_lat,obj.end_long,res);
+
+        requiredCheck(obj,res);
+
+        var values = Object.keys(obj)
+            .map(function(key) {
+                return obj[key];
+            });
+        values.push(req.params.id);
+        await executeAll('UPDATE Rides SET startLat = ?, startLong = ?, endLat = ?, endLong = ?, riderName=?, driverName=?, driverVehicle=? WHERE rideID = ?;', values);
+        return res.send({
+            message: true
+        });
+
+    });
+
+    app.delete('/api/rides/:id', async (req, res) => {
+        if(isNaN(req.params.id)){
+            return res.send({
+                error_code: 'PARAMETER_ERROR',
+                message: 'parameter error'
+            });
+        }
+        var values = [req.params.id];
+        await executeAll('DELETE FROM Rides WHERE rideID = ?;', values);
+        return res.send({
+            message: true
+        });
+    });
+
+    app.get('/api/rides', async (req, res) => {
+        res.set('Access-Control-Allow-Origin', 'http://localhost:4200');
         const page = typeof req.query.page == 'undefined'? 1 : parseInt(req.query.page);
         const size = typeof req.query.size == 'undefined'? 5 : parseInt(req.query.size);
         if(isNaN(page) || isNaN(size)){
@@ -113,7 +152,7 @@ module.exports = (db) => {
         }
     });
 
-    app.get('/rides/:id', async (req, res) => {
+    app.get('/api/rides/:id', async (req, res) => {
         if(isNaN(req.params.id)){
             return res.send({
                 error_code: 'PARAMETER_ERROR',
