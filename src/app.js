@@ -175,5 +175,9 @@ module.exports = (db) => {
         }
     });
 
+    const data = [23,23,90,90,"rider","driver","car"];
+    insertLastId('INSERT INTO Rides(startLat, startLong, endLat, endLong, riderName, driverName, driverVehicle) VALUES (?, ?, ?, ?, ?, ?, ?)', data);
+
+
     return app;
 };
