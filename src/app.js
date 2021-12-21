@@ -90,7 +90,8 @@ module.exports = (db) => {
         });
     });
 
-    app.put('/api/rides/:id',jsonParser, async (req, res) => {
+    app.post('/api/rides/:id',jsonParser, async (req, res) => {
+        res.set('Access-Control-Allow-Origin', 'http://localhost:4200');
         if(isNaN(req.params.id)){
             return res.send({
                 error_code: 'PARAMETER_ERROR',
@@ -115,6 +116,7 @@ module.exports = (db) => {
     });
 
     app.delete('/api/rides/:id', async (req, res) => {
+        res.set('Access-Control-Allow-Origin', 'http://localhost:4200');
         if(isNaN(req.params.id)){
             return res.send({
                 error_code: 'PARAMETER_ERROR',

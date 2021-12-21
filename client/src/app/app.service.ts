@@ -18,7 +18,7 @@ export class AppService {
   }
 
   putRider(rider: Rider,id: number): Observable<any> {
-    return this.http.put<any>(this.baseUrl +'/rides/'+id, rider);
+    return this.http.post<any>(this.baseUrl +'/rides/'+id, rider);
   }
 
   deleteRider(id: number): Observable<any> {

@@ -28,11 +28,16 @@ onClickSubmit() {
   this.appService.putRider(this.rider,this.selectedId)
     .subscribe((resp: any) => {
       if(!resp.error_code){
-        this.riders = resp;
+        this.getAllUsers();
       }
     });
 }
-open(content:any) {
+
+onSelectRider(id:number){
+  this.selectedId = id;
+}
+open(content:any,id:number) {
+  this.onSelectRider(id);
   this.modalService.open(content, {ariaLabelledBy: 'Edit Rider'});
 }
 
